@@ -1,0 +1,76 @@
+*** ChampSim Multicore Out-of-Order Simulator ***
+
+Warmup Instructions: 30000000
+Simulation Instructions: 30000000
+Number of CPUs: 1
+LLC sets: 2048
+LLC ways: 16
+Off-chip DRAM Size: 4096 MB Channels: 1 Width: 64-bit Data Rate: 3200 MT/s
+
+CPU 0 runs ../traces//bfs-14.trace.gz
+CPU 0 Bimodal branch predictor
+Heartbeat CPU 0 instructions: 10000001 cycles: 2954825 heartbeat IPC: 3.3843 cumulative IPC: 3.3843 (Simulation time: 0 hr 0 min 5 sec)
+Heartbeat CPU 0 instructions: 20000003 cycles: 6399868 heartbeat IPC: 2.90272 cumulative IPC: 3.12506 (Simulation time: 0 hr 0 min 15 sec)
+Heartbeat CPU 0 instructions: 30000003 cycles: 9863237 heartbeat IPC: 2.88736 cumulative IPC: 3.0416 (Simulation time: 0 hr 0 min 26 sec)
+
+Warmup complete CPU 0 instructions: 30000003 cycles: 9863237 (Simulation time: 0 hr 0 min 26 sec)
+
+Heartbeat CPU 0 instructions: 40000001 cycles: 61174771 heartbeat IPC: 0.194888 cumulative IPC: 0.194888 (Simulation time: 0 hr 0 min 37 sec)
+Heartbeat CPU 0 instructions: 50000002 cycles: 120822619 heartbeat IPC: 0.167651 cumulative IPC: 0.180246 (Simulation time: 0 hr 0 min 48 sec)
+Heartbeat CPU 0 instructions: 60000000 cycles: 160536747 heartbeat IPC: 0.2518 cumulative IPC: 0.199106 (Simulation time: 0 hr 0 min 57 sec)
+Finished CPU 0 instructions: 30000002 cycles: 150673518 cumulative IPC: 0.199106 (Simulation time: 0 hr 0 min 57 sec)
+
+ChampSim completed all CPUs
+
+Region of Interest Statistics
+
+CPU 0 cumulative IPC: 0.199106 instructions: 30000002 cycles: 150673518
+L1D TOTAL     ACCESS:    6605558  HIT:    5703335  MISS:     902223
+L1D LOAD      ACCESS:    6076672  HIT:    5178258  MISS:     898414
+L1D RFO       ACCESS:     528886  HIT:     525077  MISS:       3809
+L1D PREFETCH  ACCESS:          0  HIT:          0  MISS:          0
+L1D WRITEBACK ACCESS:          0  HIT:          0  MISS:          0
+L1D PREFETCH  REQUESTED:          0  ISSUED:          0  USEFUL:          0  USELESS:          0
+L1D AVERAGE MISS LATENCY: 122.074 cycles
+L1I TOTAL     ACCESS:    6009382  HIT:    6009378  MISS:          4
+L1I LOAD      ACCESS:    6009382  HIT:    6009378  MISS:          4
+L1I RFO       ACCESS:          0  HIT:          0  MISS:          0
+L1I PREFETCH  ACCESS:          0  HIT:          0  MISS:          0
+L1I WRITEBACK ACCESS:          0  HIT:          0  MISS:          0
+L1I PREFETCH  REQUESTED:          0  ISSUED:          0  USEFUL:          0  USELESS:          0
+L1I AVERAGE MISS LATENCY: 246.5 cycles
+L2C TOTAL     ACCESS:     983263  HIT:     351632  MISS:     631631
+L2C LOAD      ACCESS:     898418  HIT:     266802  MISS:     631616
+L2C RFO       ACCESS:       3809  HIT:       3796  MISS:         13
+L2C PREFETCH  ACCESS:          0  HIT:          0  MISS:          0
+L2C WRITEBACK ACCESS:      81036  HIT:      81034  MISS:          2
+L2C PREFETCH  REQUESTED:          0  ISSUED:          0  USEFUL:          0  USELESS:          0
+L2C AVERAGE MISS LATENCY: 152.828 cycles
+LLC TOTAL     ACCESS:     720177  HIT:        620  MISS:     719557
+LLC LOAD      ACCESS:     631616  HIT:        470  MISS:     631146
+LLC RFO       ACCESS:         13  HIT:          0  MISS:         13
+LLC PREFETCH  ACCESS:          0  HIT:          0  MISS:          0
+LLC WRITEBACK ACCESS:      88548  HIT:        150  MISS:      88398
+LLC PREFETCH  REQUESTED:          0  ISSUED:          0  USEFUL:          0  USELESS:          0
+LLC AVERAGE MISS LATENCY: 107.812 cycles
+Major fault: 0 Minor fault: 26846
+
+DRAM Statistics
+ CHANNEL 0
+ RQ ROW_BUFFER_HIT:     310541  ROW_BUFFER_MISS:     320618
+ DBUS_CONGESTED:      10182
+ WQ ROW_BUFFER_HIT:      38536  ROW_BUFFER_MISS:      53700  FULL:          0
+
+ AVG_CONGESTED_CYCLE: 5
+
+CPU 0 Branch Prediction Accuracy: 78.3885% MPKI: 49.0929 Average ROB Occupancy at Mispredict: 5.14465
+
+Branch types
+NOT_BRANCH: 23184830 77.2828%
+BRANCH_DIRECT_JUMP: 36 0.00012%
+BRANCH_INDIRECT: 0 0%
+BRANCH_CONDITIONAL: 6814766 22.7159%
+BRANCH_DIRECT_CALL: 18 6e-05%
+BRANCH_INDIRECT_CALL: 0 0%
+BRANCH_RETURN: 17 5.66667e-05%
+BRANCH_OTHER: 0 0%
