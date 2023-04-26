@@ -16,6 +16,10 @@
 * Traces used are BFS-14 and SSSP-14<br>
 * plots.ipynb is used to generate the graphs and results present in plots.zip
 
+## Video Links
+* https://drive.google.com/file/d/1RVcNrMfwI7FOBXvbxG_X3hVNMp5OMlvK/view?usp=sharing
+* https://youtu.be/ZMihc14WoFo
+
 ## References
 * https://www.cs.utexas.edu/~lin/papers/hpca22.pdf
 * https://www.cs.utexas.edu/~lin/papers/crc17.pdf
