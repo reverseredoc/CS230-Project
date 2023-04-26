@@ -16,3 +16,11 @@
 * Traces used are BFS-14 and SSSP-14<br>
 * plots.ipynb is used to generate the graphs and results present in plots.zip
 
+## References
+* https://www.cs.utexas.edu/~lin/papers/hpca22.pdf
+* https://www.cs.utexas.edu/~lin/papers/crc17.pdf
+* https://inria.hal.science/hal-01254863/document#:~:text=Best%2DOffset%20prefetching%20is%20intended,prefet%2D%20ches%20%5B33%5D.
+* https://dpc3.compas.cs.stonybrook.edu/pdfs/Pangloss.pdf
+* https://mrmgroup.cs.princeton.edu/papers/MICRO11_SHiP_Wu_Final.pdf
+* https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8675225
+* https://www.cs.utexas.edu/~lin/papers/isca16.pdf
