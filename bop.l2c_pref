@@ -1,0 +1,276 @@
+#include "cache.h"
+
+
+void CACHE::dq_push(uint64_t lineaddr)
+{
+  if (d_queue.valid[d_queue.end]) {
+    recent_request_table.insert_left(d_queue.lineaddr[d_queue.start]);
+    d_queue.start = (d_queue.start + 1) % DELAYQSIZE;
+  }
+  d_queue.lineaddr[d_queue.end] = (((lineaddr) & ((1<<(RRINDEX+RRTAG))-1)));
+  d_queue.cycle[d_queue.end] = (((current_core_cycle[0]) & ((1<<(12))-1)));
+  d_queue.valid[d_queue.end] = 1;
+  d_queue.end = (d_queue.end + 1) % DELAYQSIZE;
+}
+
+void CACHE::dq_pop()
+{
+  for (int i=0; i<DELAYQSIZE; i++) {
+    if (! d_queue.ready()) {
+      break;
+    }
+    recent_request_table.insert_left(d_queue.lineaddr[d_queue.start]);
+    d_queue.valid[d_queue.start] = 0;
+    d_queue.start = (d_queue.start + 1) % DELAYQSIZE;
+  }
+}
+
+void CACHE::throttle_controller()
+{
+  int cycle = (((current_core_cycle[0]) & ((1<<(12))-1)));
+  int dt = (((cycle - throttler.last_cycle) & ((1<<(12))-1)));
+  throttler.last_cycle = cycle;
+  throttler.llc_rate_gauge += dt - throttler.llc_rate;
+  if (throttler.llc_rate_gauge > GAUGE_MAX) {
+    throttler.llc_rate_gauge = GAUGE_MAX;
+    if (throttler.llc_rate < LLC_RATE_MAX) {
+      throttler.llc_rate++;
+      if ((throttler.prefetch_score_1 > LOW_SCORE) || (throttler.llc_rate > (2*64))) {
+        throttler.mshr_threshold = MSHR_THRESHOLD_MAX;
+      }
+      else if (throttler.llc_rate < 64) {
+        throttler.mshr_threshold = MSHR_THRESHOLD_MIN;
+      }
+      else {
+        double temp = throttler.llc_rate - 64;
+        temp = temp / 64;
+        temp = temp * (MSHR_THRESHOLD_MAX-MSHR_THRESHOLD_MIN);
+        temp = temp + MSHR_THRESHOLD_MIN;
+        throttler.mshr_threshold = temp;
+      }
+    }
+  }
+  else if (throttler.llc_rate_gauge < 0) {
+    throttler.llc_rate_gauge = 0;
+    if (throttler.llc_rate > 0) {
+      throttler.llc_rate--;
+      if ((throttler.prefetch_score_1 > LOW_SCORE) || (throttler.llc_rate > (2 * 64))) {
+        throttler.mshr_threshold = MSHR_THRESHOLD_MAX;
+      }
+      else if (throttler.llc_rate < 64) {
+        throttler.mshr_threshold = MSHR_THRESHOLD_MIN;
+      }
+      else {
+        double temp = throttler.llc_rate - 64;
+        temp = temp / 64;
+        temp = temp * (MSHR_THRESHOLD_MAX-MSHR_THRESHOLD_MIN);
+        temp = temp + MSHR_THRESHOLD_MIN;
+        throttler.mshr_threshold = temp;
+      }
+    }
+  }
+}
+
+
+void CACHE::learn_offset(uint64_t line_addr){
+  int testoffset = OFFSET[score_counter.p];
+  uint64_t testlineaddr = line_addr - testoffset;
+  if (((line_addr << LOG2_BLOCK_SIZE) >> LOG2_PAGE_SIZE) == ((testlineaddr << LOG2_BLOCK_SIZE)>>LOG2_PAGE_SIZE) && recent_request_table.hit(testlineaddr)){
+    score_counter.score[score_counter.p]++;
+    if (score_counter.score[score_counter.p] >= score_counter.max_score_1) {
+      score_counter.max_score_2 = score_counter.max_score_1;
+      score_counter.max_score_1 = score_counter.score[score_counter.p];
+      score_counter.best_offset_2 = score_counter.best_offset_1;
+      score_counter.best_offset_1 = testoffset;
+    }
+    else if(score_counter.score[score_counter.p] >= score_counter.max_score_2){
+        score_counter.max_score_2 = score_counter.score[score_counter.p];
+        score_counter.best_offset_2 = testoffset;
+    }
+  }
+  if (score_counter.p == (NOFFSETS-1)) {
+    // one round finished
+    score_counter.round++;
+    if ((score_counter.max_score_1 == SCORE_MAX) || (score_counter.round == ROUND_MAX)) {
+      if (score_counter.best_offset_1 != 0){
+        prefetch_offset_1 = score_counter.best_offset_1;
+      }
+      else{
+        prefetch_offset_1 = 1;
+      }
+
+      if (score_counter.best_offset_2 != 0){
+        prefetch_offset_2 = score_counter.best_offset_2;
+      }
+      else{
+        prefetch_offset_2 = 1;
+      }
+      throttler.prefetch_score_1 = score_counter.max_score_1; // PREFETCH THROTTLE
+      throttler.prefetch_score_2 = score_counter.max_score_2; // KG
+
+      if (score_counter.max_score_1 <= BAD_SCORE) {
+        prefetch_offset_1 = 0;
+      }
+
+        for (int i=0; i<NOFFSETS; i++) {
+            score_counter.score[i] = 0;
+        }
+
+        score_counter.max_score_1 = 0;
+        score_counter.max_score_2 = 0;
+        score_counter.best_offset_1 = 0;
+        score_counter.best_offset_2 = 0;
+        score_counter.round = 0;
+        score_counter.p = 0;
+      return;
+    }
+  }
+  score_counter.p = (score_counter.p + 1) % NOFFSETS; // prepare to test the next offset
+}
+
+void CACHE::l2c_prefetcher_initialize()
+{
+  prefetch_offset_1 = 1;
+  prefetch_offset_2 = 1;
+
+  for (int i=0; i<NOFFSETS; i++) {
+    score_counter.score[i] = 0;
+  }
+
+  score_counter.max_score_1 = 0;
+  score_counter.max_score_2 = 0;
+  score_counter.best_offset_1 = 0;
+  score_counter.best_offset_2 = 0;
+  score_counter.round = 0;
+  score_counter.p = 0;
+
+  for (int i=0; i<DELAYQSIZE; i++) {
+    d_queue.lineaddr[i] = 0;
+    d_queue.cycle[i] = 0;
+    d_queue.valid[i] = 0;
+  }
+  d_queue.end = 0;
+  d_queue.start = 0;
+
+  throttler.mshr_threshold = MSHR_THRESHOLD_MAX;
+  throttler.prefetch_score_1 = SCORE_MAX;
+  throttler.prefetch_score_2 = SCORE_MAX;
+  throttler.llc_rate = 0;
+  throttler.llc_rate_gauge = GAUGE_MAX/2;
+  throttler.last_cycle = 0;
+
+  for (int i=0; i<(1<<RRINDEX); i++) {
+    recent_request_table.recent_request[0][i] = 0;
+    recent_request_table.recent_request[1][i] = 0;
+  }
+
+  for (int i=0; i<L2C_SET; i++) {
+    for (int j=0; j<L2C_WAY; j++) {
+        prefetch_bit[i][j] = 0;
+    }
+  }
+}
+
+uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+{
+  uint64_t line_addr = addr >> LOG2_BLOCK_SIZE;
+
+  DP(if (warmup_complete[cpu]) {
+        cout << "[" << NAME << "] " << __func__ << hex << " base_cl: " << (addr >> LOG2_BLOCK_SIZE);
+        cout << " pf_cl: " << (pf_addr >> LOG2_BLOCK_SIZE) << " ip: " << ip << " cache_hit: " << +cache_hit
+             << " type: " << +type << endl;
+  });
+
+  // write the prefetch bit
+  int s = get_set(addr);
+  int w = get_way(addr,s);
+
+  // int l2_hit = (w>=0);
+  int l2_hit = 0;
+
+  if (w < NUM_WAY && w >= 0){
+    l2_hit = 1;
+  }
+
+  int prefetched = 0; // set if line was prefetched
+
+  if (l2_hit){ //L2 hit
+    prefetched = prefetch_bit[s][w];
+    prefetch_bit[s][w] = 0; //resetting
+  } else {
+    throttle_controller();
+  }
+
+  dq_pop();
+
+  int prefetch_issued = 0; // for throttling
+
+  if (! l2_hit || prefetched) {
+    learn_offset(line_addr); // Learning the best offset in this phase
+
+    // rr_insert_left(line_addr);
+    if (((line_addr << LOG2_BLOCK_SIZE) >> LOG2_PAGE_SIZE) == (((line_addr + prefetch_offset_1) << LOG2_BLOCK_SIZE) >> LOG2_PAGE_SIZE)){
+        dq_push(line_addr);
+        if (prefetch_offset_1 != 0 && MSHR.occupancy < throttler.mshr_threshold){
+          int success = prefetch_line(ip, addr, (line_addr + prefetch_offset_1) << LOG2_BLOCK_SIZE, FILL_L2, 0);
+          if (success) throttle_controller();
+        }
+
+        // SW
+        else if (throttler.prefetch_score_1 > LOW_SCORE && prefetch_offset_1 != 0) {
+            if (prefetch_line(ip, addr, (line_addr + prefetch_offset_1) << LOG2_BLOCK_SIZE, FILL_LLC, 0)){
+                throttle_controller();
+            }
+        }
+    }
+
+    if (((line_addr << LOG2_BLOCK_SIZE) >> LOG2_PAGE_SIZE) == (((line_addr + prefetch_offset_2) << LOG2_BLOCK_SIZE) >> LOG2_PAGE_SIZE)){
+        dq_push(line_addr);
+        if (prefetch_offset_2 != 0 && MSHR.occupancy < throttler.mshr_threshold){
+          int success = prefetch_line(ip, addr, (line_addr + prefetch_offset_2) << LOG2_BLOCK_SIZE, FILL_L2, 0);
+          if (success) throttle_controller();
+        }
+
+        else if (throttler.prefetch_score_2 > LOW_SCORE && prefetch_offset_2 != 0) {
+            if (prefetch_line(ip, addr, (line_addr + prefetch_offset_2) << LOG2_BLOCK_SIZE, FILL_LLC, 0)){
+                throttle_controller();
+            }
+        }
+    }
+  }
+  return metadata_in;
+}
+
+uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+{
+  uint64_t line_addr = addr >> LOG2_BLOCK_SIZE;
+
+  // write the prefetch bit
+  int s = get_set(addr);
+  int w = get_way(addr,s);
+
+  prefetch_bit[s][w] = prefetch;
+
+  uint64_t baselineaddr;
+  if (prefetch || (prefetch_offset_1 == 0)){
+    baselineaddr = line_addr - prefetch_offset_1;
+    if (((line_addr << LOG2_BLOCK_SIZE) >> LOG2_PAGE_SIZE) == ((baselineaddr << LOG2_BLOCK_SIZE) >> LOG2_PAGE_SIZE)){
+      recent_request_table.insert_right(baselineaddr);
+    }
+  }
+  if (prefetch || (prefetch_offset_2 == 0)){
+    baselineaddr = line_addr - prefetch_offset_2;
+    if (((line_addr << LOG2_BLOCK_SIZE) >> LOG2_PAGE_SIZE) == ((baselineaddr << LOG2_BLOCK_SIZE) >> LOG2_PAGE_SIZE)){
+      recent_request_table.insert_right(baselineaddr);
+    }
+  }
+  return metadata_in;
+}
+
+
+void CACHE::l2c_prefetcher_final_stats()
+{cout << "CPU " << cpu << " L2C best offset prefetcher final stats" << endl;
+
+}
+
+
